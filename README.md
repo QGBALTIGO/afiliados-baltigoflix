@@ -51,6 +51,7 @@ Copie `.env.example` para `.env` e configure:
 - `ADMIN_TELEGRAM_IDS`: IDs numéricos dos administradores, separados por vírgula.
 - `PUBLIC_BASE_URL`: domínio HTTPS público.
 - `OFFICIAL_SITE_URL`: endereço do site verdadeiro que exibirá os links do afiliado.
+- `OFFICIAL_SITE_INTEGRATION_ENABLED`: ativa os links do site oficial somente depois que a integração está publicada; mantenha `false` durante a preparação.
 - `CHECKOUT_MONTHLY`: ID ou IDs do checkout mensal.
 - `CHECKOUT_QUARTERLY`: ID ou IDs do checkout trimestral.
 - `CHECKOUT_SEMIANNUAL`: ID ou IDs do checkout semestral.
@@ -60,7 +61,7 @@ Quando um plano tiver mais de um checkout oficial, separe os IDs por vírgula, p
 
 O comando `/meuid` mostra o ID numérico do usuário no Telegram.
 
-O site oficial consulta `GET /api/affiliate/{slug}` no serviço do Railway. O endpoint só responde para cadastros aprovados e libera CORS exclusivamente para `OFFICIAL_SITE_URL`. Links antigos no formato do Railway (`/{slug}`) redirecionam para o site oficial.
+O site oficial consulta `GET /api/affiliate/{slug}` no serviço do Railway. O endpoint só responde para cadastros aprovados e libera CORS exclusivamente para `OFFICIAL_SITE_URL`. Quando `OFFICIAL_SITE_INTEGRATION_ENABLED=true`, links antigos no formato do Railway (`/{slug}`) redirecionam para o site oficial.
 
 Nunca envie ou publique o token do bot. Se um token já apareceu em chat, commit, print ou log, revogue-o no BotFather.
 

@@ -21,6 +21,7 @@ class BotFormattingTests(unittest.IsolatedAsyncioTestCase):
 
     def test_page_url_uses_the_official_site(self):
         os.environ["OFFICIAL_SITE_URL"] = "https://baltigoflix.com.br/"
+        os.environ["OFFICIAL_SITE_INTEGRATION_ENABLED"] = "true"
         try:
             self.assertEqual(
                 page_url("gabriel-92"),
@@ -28,6 +29,7 @@ class BotFormattingTests(unittest.IsolatedAsyncioTestCase):
             )
         finally:
             os.environ.pop("OFFICIAL_SITE_URL", None)
+            os.environ.pop("OFFICIAL_SITE_INTEGRATION_ENABLED", None)
 
     async def test_plan_prompt_uses_safe_support_text(self):
         message = SimpleNamespace(reply_text=AsyncMock())

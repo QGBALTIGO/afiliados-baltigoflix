@@ -49,7 +49,7 @@ def admin_ids() -> set[int]:
 
 def page_url(slug: str) -> str:
     official_site = env("OFFICIAL_SITE_URL", "https://baltigoflix.com.br")
-    if official_site:
+    if env_bool("OFFICIAL_SITE_INTEGRATION_ENABLED") and official_site:
         return official_site.rstrip("/") + "/?" + urlencode({"afiliado": slug})
     return env("PUBLIC_BASE_URL", "http://localhost:8000").rstrip("/") + "/" + slug
 

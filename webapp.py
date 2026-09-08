@@ -14,6 +14,11 @@ def env(name: str, default: str = "") -> str:
     return os.getenv(name, default).strip()
 
 
+def env_bool(name: str, default: bool = False) -> bool:
+    value = env(name, "true" if default else "false").lower()
+    return value in {"1", "true", "yes", "sim", "on"}
+
+
 def official_site_url() -> str:
     return env("OFFICIAL_SITE_URL", "https://baltigoflix.com.br").rstrip("/")
 
@@ -203,9 +208,48 @@ async def affiliate_api(slug: str):
     )
 
 
-@app.get("/{slug}", response_class=RedirectResponse)
+@app.get("/{slug}")
 async def affiliate_page(slug: str):
     row = get_affiliate_by_slug(slug.lower())
     if not row:
         raise HTTPException(status_code=404, detail="Página não encontrada")
-    return RedirectResponse(affiliate_public_url(row["slug"]), status_code=302)
+    if env_bool("OFFICIAL_SITE_INTEGRATION_ENABLED"):
+        return RedirectResponse(affiliate_public_url(row["slug"]), status_code=302)
+
+    labels = {
+        "monthly": "Mensal",
+        "quarterly": "Trimestral",
+        "semiannual": "Semestral",
+        "annual": "Anual",
+    }
+    prices = {
+        "monthly": env("PRICE_MONTHLY", "20,90"),
+        "quarterly": env("PRICE_QUARTERLY", "49,90"),
+        "semiannual": env("PRICE_SEMIANNUAL", "79,90"),
+        "annual": env("PRICE_ANNUAL", "119,90"),
+    }
+    try:
+        checkouts = affiliate_checkouts(row)
+    except ValueError as exc:
+        raise HTTPException(status_code=503, detail="Checkouts indisponíveis") from exc
+
+    cards = [
+        f"""<article class="card">
+          <h2>{labels[plan]}</h2>
+          <p class="offer">Oferta oficial</p>
+          <div class="price">R$ {html.escape(prices[plan])}</div>
+          <a class="btn" href="{html.escape(checkouts[plan])}" rel="nofollow sponsored noopener">
+            Escolher {labels[plan]}
+          </a>
+        </article>"""
+        for plan in ("monthly", "quarterly", "semiannual", "annual")
+    ]
+    brand = env("BRAND_NAME", "Minha Marca")
+    public_name = html.escape(row["display_name"] or row["slug"])
+    body = f"""<section class="hero">
+      <span class="badge">Parceiro verificado · {public_name}</span>
+      <h1>{html.escape(brand)}</h1>
+      <p class="lead">Escolha uma opção. Você será direcionado ao checkout oficial com a indicação deste parceiro.</p>
+    </section>
+    <section class="grid">{''.join(cards)}</section>"""
+    return HTMLResponse(layout(f"{brand} — {row['slug']}", body))
