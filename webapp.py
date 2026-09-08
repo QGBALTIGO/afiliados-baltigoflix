@@ -173,11 +173,22 @@ async def affiliate_page(slug: str):
         "semiannual": row["semiannual_key"],
         "annual": row["annual_key"],
     }
+    checkout_ids = {
+        "monthly": row["monthly_checkout"],
+        "quarterly": row["quarterly_checkout"],
+        "semiannual": row["semiannual_checkout"],
+        "annual": row["annual_checkout"],
+    }
 
     cards = []
     for plan in ("monthly", "quarterly", "semiannual", "annual"):
         try:
-            url = build_canonical_checkout(plan, row["affiliate_id"], keys[plan])
+            url = build_canonical_checkout(
+                plan,
+                row["affiliate_id"],
+                keys[plan],
+                checkout_ids[plan],
+            )
             button = (
                 f'<a class="btn" href="{html.escape(url)}" '
                 f'rel="nofollow sponsored noopener">Escolher {labels[plan]}</a>'

@@ -50,10 +50,12 @@ Copie `.env.example` para `.env` e configure:
 - `TELEGRAM_BOT_TOKEN`: token novo do BotFather.
 - `ADMIN_TELEGRAM_IDS`: IDs numéricos dos administradores, separados por vírgula.
 - `PUBLIC_BASE_URL`: domínio HTTPS público.
-- `CHECKOUT_MONTHLY`: ID do checkout mensal.
-- `CHECKOUT_QUARTERLY`: ID do checkout trimestral.
-- `CHECKOUT_SEMIANNUAL`: ID do checkout semestral.
-- `CHECKOUT_ANNUAL`: ID do checkout anual.
+- `CHECKOUT_MONTHLY`: ID ou IDs do checkout mensal.
+- `CHECKOUT_QUARTERLY`: ID ou IDs do checkout trimestral.
+- `CHECKOUT_SEMIANNUAL`: ID ou IDs do checkout semestral.
+- `CHECKOUT_ANNUAL`: ID ou IDs do checkout anual.
+
+Quando um plano tiver mais de um checkout oficial, separe os IDs por vírgula, por exemplo: `3fsy24d,35znaim`. O sistema salva e reutiliza exatamente o checkout enviado pelo afiliado.
 
 O comando `/meuid` mostra o ID numérico do usuário no Telegram.
 

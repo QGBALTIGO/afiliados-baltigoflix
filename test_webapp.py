@@ -27,6 +27,12 @@ class WebAppTests(unittest.TestCase):
             "pagina-teste",
             "affiliate-123",
             {plan: "affiliate" for plan in ("monthly", "quarterly", "semiannual", "annual")},
+            {
+                "monthly": "MENSAL123",
+                "quarterly": "TRI123",
+                "semiannual": "SEM123",
+                "annual": "ANUAL123",
+            },
             active=False,
         )
         self.client = TestClient(app)

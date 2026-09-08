@@ -16,6 +16,10 @@ logging.basicConfig(
     level=os.getenv("LOG_LEVEL", "INFO").upper(),
     format="%(asctime)s %(levelname)s %(name)s: %(message)s",
 )
+# A API do Telegram inclui o token no caminho da requisição. Não permita que
+# bibliotecas HTTP registrem essas URLs nos logs de produção.
+logging.getLogger("httpx").setLevel(logging.WARNING)
+logging.getLogger("httpcore").setLevel(logging.WARNING)
 logger = logging.getLogger(__name__)
 
 

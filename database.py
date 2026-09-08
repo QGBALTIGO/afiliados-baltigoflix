@@ -17,6 +17,10 @@ CREATE TABLE IF NOT EXISTS affiliates (
     quarterly_key TEXT NOT NULL DEFAULT 'affiliate',
     semiannual_key TEXT NOT NULL DEFAULT 'affiliate',
     annual_key TEXT NOT NULL DEFAULT 'affiliate',
+    monthly_checkout TEXT,
+    quarterly_checkout TEXT,
+    semiannual_checkout TEXT,
+    annual_checkout TEXT,
     active INTEGER NOT NULL DEFAULT 0,
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
@@ -51,6 +55,17 @@ def connect() -> sqlite3.Connection:
 def init_db() -> None:
     with connect() as con:
         con.executescript(SCHEMA)
+        existing_columns = {
+            row["name"] for row in con.execute("PRAGMA table_info(affiliates)").fetchall()
+        }
+        for column in (
+            "monthly_checkout",
+            "quarterly_checkout",
+            "semiannual_checkout",
+            "annual_checkout",
+        ):
+            if column not in existing_columns:
+                con.execute(f"ALTER TABLE affiliates ADD COLUMN {column} TEXT")
         con.execute("PRAGMA journal_mode=WAL")
 
 
@@ -98,6 +113,7 @@ def save_affiliate(
     slug: str,
     affiliate_id: str,
     keys: dict[str, str],
+    checkout_ids: dict[str, str],
     active: bool = False,
 ):
     with connect() as con:
@@ -105,8 +121,10 @@ def save_affiliate(
             """
             INSERT INTO affiliates (
                 telegram_user_id, telegram_username, display_name, slug, affiliate_id,
-                monthly_key, quarterly_key, semiannual_key, annual_key, active
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                monthly_key, quarterly_key, semiannual_key, annual_key,
+                monthly_checkout, quarterly_checkout, semiannual_checkout, annual_checkout,
+                active
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(telegram_user_id) DO UPDATE SET
                 telegram_username=excluded.telegram_username,
                 display_name=excluded.display_name,
@@ -116,6 +134,10 @@ def save_affiliate(
                 quarterly_key=excluded.quarterly_key,
                 semiannual_key=excluded.semiannual_key,
                 annual_key=excluded.annual_key,
+                monthly_checkout=excluded.monthly_checkout,
+                quarterly_checkout=excluded.quarterly_checkout,
+                semiannual_checkout=excluded.semiannual_checkout,
+                annual_checkout=excluded.annual_checkout,
                 active=excluded.active,
                 updated_at=CURRENT_TIMESTAMP
             """,
@@ -129,6 +151,10 @@ def save_affiliate(
                 keys.get("quarterly", "affiliate"),
                 keys.get("semiannual", "affiliate"),
                 keys.get("annual", "affiliate"),
+                checkout_ids.get("monthly"),
+                checkout_ids.get("quarterly"),
+                checkout_ids.get("semiannual"),
+                checkout_ids.get("annual"),
                 int(active),
             ),
         )

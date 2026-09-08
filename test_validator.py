@@ -23,6 +23,18 @@ class ValidatorTests(unittest.TestCase):
         self.assertTrue(result.ok)
         self.assertEqual(result.affiliate_id, "abc-123")
 
+    def test_multiple_checkouts_for_same_plan(self):
+        os.environ["CHECKOUT_QUARTERLY"] = "TRI123, TRI456"
+        first = validate_checkout_link(
+            "https://pay.cakto.com.br/TRI123?affiliate=abc", "quarterly"
+        )
+        second = validate_checkout_link(
+            "https://pay.cakto.com.br/TRI456?affiliate=abc", "quarterly"
+        )
+        self.assertTrue(first.ok)
+        self.assertTrue(second.ok)
+        self.assertEqual(second.checkout_id, "TRI456")
+
     def test_wrong_plan(self):
         result = validate_checkout_link(
             "https://pay.cakto.com.br/ANUAL123?affiliate=abc",
@@ -92,7 +104,7 @@ class ValidatorTests(unittest.TestCase):
 
     def test_duplicate_checkout_configuration_is_rejected(self):
         os.environ["CHECKOUT_ANNUAL"] = "MENSAL123"
-        self.assertTrue(any("diferentes" in error for error in configuration_errors()))
+        self.assertTrue(any("mais de um plano" in error for error in configuration_errors()))
 
 
 if __name__ == "__main__":

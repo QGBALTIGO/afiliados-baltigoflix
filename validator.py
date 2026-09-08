@@ -27,12 +27,19 @@ class ValidationResult:
     checkout_id: str | None = None
 
 
-def official_checkouts() -> dict[str, str]:
+def official_checkouts() -> dict[str, tuple[str, ...]]:
     result = {}
     for plan, (_, env_name) in PLAN_CONFIG.items():
-        value = os.getenv(env_name, "").strip().strip("/")
-        if value:
-            result[plan] = value
+        raw = os.getenv(env_name, "")
+        values = tuple(
+            dict.fromkeys(
+                value.strip().strip("/")
+                for value in raw.split(",")
+                if value.strip().strip("/")
+            )
+        )
+        if values:
+            result[plan] = values
     return result
 
 
@@ -48,12 +55,24 @@ def configuration_errors() -> list[str]:
     if missing:
         errors.append("Checkouts ausentes: " + ", ".join(missing))
 
-    invalid = [plan for plan, checkout_id in checkouts.items() if not CHECKOUT_ID_RE.fullmatch(checkout_id)]
+    invalid = [
+        f"{plan}:{checkout_id}"
+        for plan, checkout_ids in checkouts.items()
+        for checkout_id in checkout_ids
+        if not CHECKOUT_ID_RE.fullmatch(checkout_id)
+    ]
     if invalid:
         errors.append("IDs de checkout inválidos: " + ", ".join(invalid))
 
-    if len(set(checkouts.values())) != len(checkouts):
-        errors.append("Os quatro planos precisam usar IDs de checkout diferentes")
+    owners = {}
+    conflicts = set()
+    for plan, checkout_ids in checkouts.items():
+        for checkout_id in checkout_ids:
+            previous_plan = owners.setdefault(checkout_id, plan)
+            if previous_plan != plan:
+                conflicts.add(checkout_id)
+    if conflicts:
+        errors.append("IDs associados a mais de um plano: " + ", ".join(sorted(conflicts)))
 
     if not allowed_hosts():
         errors.append("Nenhum domínio de checkout permitido foi configurado")
@@ -70,8 +89,8 @@ def extract_url(text: str) -> str | None:
 
 
 def detect_plan(checkout_id: str) -> str | None:
-    for plan, configured_id in official_checkouts().items():
-        if configured_id == checkout_id:
+    for plan, configured_ids in official_checkouts().items():
+        if checkout_id in configured_ids:
             return plan
     return None
 
@@ -156,11 +175,19 @@ def validate_checkout_link(text: str, expected_plan: str) -> ValidationResult:
     )
 
 
-def build_canonical_checkout(plan: str, affiliate_id: str, affiliate_key: str = "affiliate") -> str:
+def build_canonical_checkout(
+    plan: str,
+    affiliate_id: str,
+    affiliate_key: str = "affiliate",
+    checkout_id: str | None = None,
+) -> str:
     checkouts = official_checkouts()
-    checkout_id = checkouts.get(plan)
-    if not checkout_id:
+    configured_ids = checkouts.get(plan, ())
+    if not configured_ids:
         raise ValueError(f"Checkout oficial não configurado para {plan}")
+    checkout_id = checkout_id or configured_ids[0]
+    if checkout_id not in configured_ids:
+        raise ValueError("Checkout não autorizado para este plano")
     if affiliate_key not in AFFILIATE_KEYS:
         raise ValueError("Chave de afiliado inválida")
     if not AFFILIATE_ID_RE.fullmatch(affiliate_id):

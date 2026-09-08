@@ -318,6 +318,7 @@ async def handle_plan(
     links[plan] = {
         "affiliate_id": result.affiliate_id,
         "affiliate_key": result.affiliate_key,
+        "checkout_id": result.checkout_id,
     }
 
     identifiers = {value["affiliate_id"] for value in links.values()}
@@ -352,6 +353,7 @@ async def handle_plan(
     user = update.effective_user
     affiliate_id = next(iter(identifiers))
     keys = {key: value["affiliate_key"] for key, value in links.items()}
+    checkout_ids = {key: value["checkout_id"] for key, value in links.items()}
     auto_approve = env_bool("AUTO_APPROVE_AFFILIATES")
     try:
         row = save_affiliate(
@@ -361,6 +363,7 @@ async def handle_plan(
             slug=slug,
             affiliate_id=affiliate_id,
             keys=keys,
+            checkout_ids=checkout_ids,
             active=auto_approve,
         )
     except sqlite3.IntegrityError:
