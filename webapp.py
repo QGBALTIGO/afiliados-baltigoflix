@@ -1,9 +1,10 @@
 import html
 import os
 from contextlib import asynccontextmanager
+from urllib.parse import urlencode, urlsplit
 
 from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import HTMLResponse, JSONResponse, PlainTextResponse
+from fastapi.responses import HTMLResponse, JSONResponse, PlainTextResponse, RedirectResponse
 
 from database import database_healthy, get_affiliate_by_slug, init_db
 from validator import build_canonical_checkout, configuration_errors
@@ -11,6 +12,19 @@ from validator import build_canonical_checkout, configuration_errors
 
 def env(name: str, default: str = "") -> str:
     return os.getenv(name, default).strip()
+
+
+def official_site_url() -> str:
+    return env("OFFICIAL_SITE_URL", "https://baltigoflix.com.br").rstrip("/")
+
+
+def affiliate_public_url(slug: str) -> str:
+    return official_site_url() + "/?" + urlencode({"afiliado": slug})
+
+
+def official_site_origin() -> str:
+    parsed = urlsplit(official_site_url())
+    return f"{parsed.scheme}://{parsed.netloc}"
 
 
 @asynccontextmanager
@@ -39,6 +53,10 @@ async def security_headers(request: Request, call_next):
         "default-src 'none'; style-src 'unsafe-inline'; img-src 'self' data:; "
         "font-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
     )
+    origin = request.headers.get("origin")
+    if request.url.path.startswith("/api/") and origin == official_site_origin():
+        response.headers["Access-Control-Allow-Origin"] = origin
+        response.headers["Vary"] = "Origin"
     if request.url.scheme == "https" or request.headers.get("x-forwarded-proto") == "https":
         response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
     return response
@@ -146,27 +164,7 @@ async def home():
     )
 
 
-@app.get("/{slug}", response_class=HTMLResponse)
-async def affiliate_page(slug: str):
-    row = get_affiliate_by_slug(slug.lower())
-    if not row:
-        raise HTTPException(status_code=404, detail="Página não encontrada")
-
-    brand = env("BRAND_NAME", "Minha Marca")
-    brand_html = html.escape(brand)
-    public_name = html.escape(row["display_name"] or row["slug"])
-    prices = {
-        "monthly": env("PRICE_MONTHLY", "20,90"),
-        "quarterly": env("PRICE_QUARTERLY", "49,90"),
-        "semiannual": env("PRICE_SEMIANNUAL", "79,90"),
-        "annual": env("PRICE_ANNUAL", "119,90"),
-    }
-    labels = {
-        "monthly": "Mensal",
-        "quarterly": "Trimestral",
-        "semiannual": "Semestral",
-        "annual": "Anual",
-    }
+def affiliate_checkouts(row) -> dict[str, str]:
     keys = {
         "monthly": row["monthly_key"],
         "quarterly": row["quarterly_key"],
@@ -179,35 +177,35 @@ async def affiliate_page(slug: str):
         "semiannual": row["semiannual_checkout"],
         "annual": row["annual_checkout"],
     }
-
-    cards = []
-    for plan in ("monthly", "quarterly", "semiannual", "annual"):
-        try:
-            url = build_canonical_checkout(
-                plan,
-                row["affiliate_id"],
-                keys[plan],
-                checkout_ids[plan],
-            )
-            button = (
-                f'<a class="btn" href="{html.escape(url)}" '
-                f'rel="nofollow sponsored noopener">Escolher {labels[plan]}</a>'
-            )
-        except ValueError:
-            button = '<span class="btn" style="opacity:.45">Indisponível</span>'
-        cards.append(
-            f"""<article class="card">
-              <h2>{labels[plan]}</h2>
-              <p class="offer">Oferta oficial</p>
-              <div class="price">R$ {html.escape(prices[plan])}</div>
-              {button}
-            </article>"""
+    return {
+        plan: build_canonical_checkout(
+            plan,
+            row["affiliate_id"],
+            keys[plan],
+            checkout_ids[plan],
         )
+        for plan in ("monthly", "quarterly", "semiannual", "annual")
+    }
 
-    body = f"""<section class="hero">
-      <span class="badge">Parceiro verificado · {public_name}</span>
-      <h1>{brand_html}</h1>
-      <p class="lead">Escolha uma opção. Você será direcionado ao checkout oficial com a indicação deste parceiro.</p>
-    </section>
-    <section class="grid">{''.join(cards)}</section>"""
-    return layout(f"{brand} — {row['display_name'] or row['slug']}", body)
+
+@app.get("/api/affiliate/{slug}")
+async def affiliate_api(slug: str):
+    row = get_affiliate_by_slug(slug.lower())
+    if not row:
+        raise HTTPException(status_code=404, detail="Página não encontrada")
+    try:
+        checkouts = affiliate_checkouts(row)
+    except ValueError as exc:
+        raise HTTPException(status_code=503, detail="Checkouts indisponíveis") from exc
+    return JSONResponse(
+        {"slug": row["slug"], "checkouts": checkouts},
+        headers={"Cache-Control": "no-store"},
+    )
+
+
+@app.get("/{slug}", response_class=RedirectResponse)
+async def affiliate_page(slug: str):
+    row = get_affiliate_by_slug(slug.lower())
+    if not row:
+        raise HTTPException(status_code=404, detail="Página não encontrada")
+    return RedirectResponse(affiliate_public_url(row["slug"]), status_code=302)

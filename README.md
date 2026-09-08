@@ -4,11 +4,11 @@ Bot do Telegram que cadastra parceiros, confere links de checkout e cria página
 
 ## Fluxo
 
-1. O parceiro escolhe um endereço, como `/gabriel`.
+1. O parceiro escolhe um identificador, como `gabriel`.
 2. Envia os links pessoais dos quatro planos.
 3. O bot confere HTTPS, domínio, checkout, plano e formato do identificador.
 4. Um administrador verifica a identidade e a autorização do afiliado.
-5. Após a aprovação, a página é liberada com checkouts reconstruídos pelo servidor.
+5. Após a aprovação, o site oficial abre com `?afiliado=gabriel` e recebe da API somente os checkouts reconstruídos pelo servidor.
 
 > A validação automática confere o formato do link. A aprovação humana continua necessária enquanto não houver integração oficial com a API do gateway.
 
@@ -50,6 +50,7 @@ Copie `.env.example` para `.env` e configure:
 - `TELEGRAM_BOT_TOKEN`: token novo do BotFather.
 - `ADMIN_TELEGRAM_IDS`: IDs numéricos dos administradores, separados por vírgula.
 - `PUBLIC_BASE_URL`: domínio HTTPS público.
+- `OFFICIAL_SITE_URL`: endereço do site verdadeiro que exibirá os links do afiliado.
 - `CHECKOUT_MONTHLY`: ID ou IDs do checkout mensal.
 - `CHECKOUT_QUARTERLY`: ID ou IDs do checkout trimestral.
 - `CHECKOUT_SEMIANNUAL`: ID ou IDs do checkout semestral.
@@ -58,6 +59,8 @@ Copie `.env.example` para `.env` e configure:
 Quando um plano tiver mais de um checkout oficial, separe os IDs por vírgula, por exemplo: `3fsy24d,35znaim`. O sistema salva e reutiliza exatamente o checkout enviado pelo afiliado.
 
 O comando `/meuid` mostra o ID numérico do usuário no Telegram.
+
+O site oficial consulta `GET /api/affiliate/{slug}` no serviço do Railway. O endpoint só responde para cadastros aprovados e libera CORS exclusivamente para `OFFICIAL_SITE_URL`. Links antigos no formato do Railway (`/{slug}`) redirecionam para o site oficial.
 
 Nunca envie ou publique o token do bot. Se um token já apareceu em chat, commit, print ou log, revogue-o no BotFather.
 

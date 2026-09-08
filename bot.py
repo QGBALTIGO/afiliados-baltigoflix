@@ -3,6 +3,7 @@ import logging
 import os
 import re
 import sqlite3
+from urllib.parse import urlencode
 
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.helpers import escape_markdown
@@ -47,6 +48,9 @@ def admin_ids() -> set[int]:
 
 
 def page_url(slug: str) -> str:
+    official_site = env("OFFICIAL_SITE_URL")
+    if official_site:
+        return official_site.rstrip("/") + "/?" + urlencode({"afiliado": slug})
     return env("PUBLIC_BASE_URL", "http://localhost:8000").rstrip("/") + "/" + slug
 
 

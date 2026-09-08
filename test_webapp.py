@@ -14,6 +14,7 @@ class WebAppTests(unittest.TestCase):
         self.temp_dir = tempfile.TemporaryDirectory()
         os.environ["DB_PATH"] = str(Path(self.temp_dir.name) / "test.db")
         os.environ["BRAND_NAME"] = "Baltigo & Teste"
+        os.environ["OFFICIAL_SITE_URL"] = "https://baltigoflix.com.br"
         os.environ["ALLOWED_CHECKOUT_HOSTS"] = "pay.cakto.com.br"
         os.environ["CHECKOUT_MONTHLY"] = "MENSAL123"
         os.environ["CHECKOUT_QUARTERLY"] = "TRI123"
@@ -47,14 +48,35 @@ class WebAppTests(unittest.TestCase):
 
     def test_pending_page_is_not_public(self):
         self.assertEqual(self.client.get("/pagina-teste").status_code, 404)
+        self.assertEqual(self.client.get("/api/affiliate/pagina-teste").status_code, 404)
 
-    def test_approved_page_is_public_and_safe(self):
+    def test_approved_page_redirects_to_official_site(self):
         set_affiliate_active(123, True)
-        response = self.client.get("/pagina-teste")
+        response = self.client.get("/pagina-teste", follow_redirects=False)
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(
+            response.headers["location"],
+            "https://baltigoflix.com.br/?afiliado=pagina-teste",
+        )
+
+    def test_approved_affiliate_api_returns_safe_checkouts(self):
+        set_affiliate_active(123, True)
+        response = self.client.get(
+            "/api/affiliate/pagina-teste",
+            headers={"Origin": "https://baltigoflix.com.br"},
+        )
         self.assertEqual(response.status_code, 200)
-        self.assertIn("apelido-publico", response.text)
         self.assertNotIn("usuario", response.text)
-        self.assertIn("affiliate-123", response.text)
+        self.assertEqual(response.json()["slug"], "pagina-teste")
+        self.assertEqual(
+            response.json()["checkouts"]["monthly"],
+            "https://pay.cakto.com.br/MENSAL123?affiliate=affiliate-123",
+        )
+        self.assertEqual(
+            response.headers["access-control-allow-origin"],
+            "https://baltigoflix.com.br",
+        )
+        self.assertEqual(response.headers["cache-control"], "no-store")
         self.assertIn("Content-Security-Policy", response.headers)
         self.assertEqual(response.headers["X-Frame-Options"], "DENY")
 

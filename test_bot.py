@@ -3,7 +3,7 @@ import unittest
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
-from bot import ask_plan, support_text
+from bot import ask_plan, page_url, support_text
 
 
 class BotFormattingTests(unittest.IsolatedAsyncioTestCase):
@@ -18,6 +18,16 @@ class BotFormattingTests(unittest.IsolatedAsyncioTestCase):
             support_text(markdown=True),
             r"🆘 Atendimento humano: @BaltigoFlix\_suporte",
         )
+
+    def test_page_url_uses_the_official_site(self):
+        os.environ["OFFICIAL_SITE_URL"] = "https://baltigoflix.com.br/"
+        try:
+            self.assertEqual(
+                page_url("gabriel-92"),
+                "https://baltigoflix.com.br/?afiliado=gabriel-92",
+            )
+        finally:
+            os.environ.pop("OFFICIAL_SITE_URL", None)
 
     async def test_plan_prompt_uses_safe_support_text(self):
         message = SimpleNamespace(reply_text=AsyncMock())
