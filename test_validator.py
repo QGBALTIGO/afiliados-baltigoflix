@@ -1,7 +1,7 @@
 import os
 import unittest
 
-from validator import configuration_errors, validate_checkout_link
+from validator import configuration_errors, validate_affiliate_link, validate_checkout_link
 
 
 class ValidatorTests(unittest.TestCase):
@@ -34,6 +34,28 @@ class ValidatorTests(unittest.TestCase):
         self.assertTrue(first.ok)
         self.assertTrue(second.ok)
         self.assertEqual(second.checkout_id, "TRI456")
+
+    def test_any_official_plan_is_accepted_in_simplified_flow(self):
+        result = validate_affiliate_link(
+            "https://pay.cakto.com.br/ANUAL123?affiliate=abc"
+        )
+        self.assertTrue(result.ok)
+        self.assertEqual(result.plan, "annual")
+
+    def test_bare_cakto_url_is_normalized(self):
+        result = validate_affiliate_link(
+            "pay.cakto.com.br/SEM123?affiliate=abc"
+        )
+        self.assertTrue(result.ok)
+        self.assertEqual(result.plan, "semiannual")
+
+    def test_invite_link_gets_specific_guidance(self):
+        result = validate_affiliate_link(
+            "https://app.cakto.com.br/affiliate/invite/example"
+        )
+        self.assertFalse(result.ok)
+        self.assertIn("convite", result.message)
+        self.assertIn("link pessoal", result.message)
 
     def test_wrong_plan(self):
         result = validate_checkout_link(

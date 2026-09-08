@@ -4,11 +4,13 @@ Bot do Telegram que cadastra parceiros, confere links de checkout e cria página
 
 ## Fluxo
 
-1. O parceiro escolhe um identificador, como `gabriel`.
-2. Envia os links pessoais dos quatro planos.
-3. O bot confere HTTPS, domínio, checkout, plano e formato do identificador.
-4. Um administrador verifica a identidade e a autorização do afiliado.
-5. Após a aprovação, o site oficial abre com `?afiliado=gabriel` e recebe da API somente os checkouts reconstruídos pelo servidor.
+1. O parceiro cria ou acessa gratuitamente sua conta Cakto.
+2. Abre novamente o convite BaltigoFlix e aceita a afiliação.
+3. Escolhe um identificador público, como `gabriel`.
+4. Envia somente um link pessoal de qualquer plano oficial.
+5. O bot extrai o identificador de afiliado e monta automaticamente os quatro checkouts.
+6. Um administrador verifica a identidade e a autorização na Cakto.
+7. Após a aprovação, o site oficial abre com `?afiliado=gabriel` e recebe da API somente os checkouts reconstruídos pelo servidor.
 
 > A validação automática confere o formato do link. A aprovação humana continua necessária enquanto não houver integração oficial com a API do gateway.
 
@@ -18,6 +20,9 @@ Bot do Telegram que cadastra parceiros, confere links de checkout e cria página
 - Rejeição de plano, produto, porta ou caminho inesperado.
 - Identificadores duplicados ou conflitantes são rejeitados.
 - Os links brutos enviados não são armazenados.
+- Um único link pessoal configura Mensal, Trimestral, Semestral e Anual.
+- Links sem `https://` também são reconhecidos quando começam com `pay.cakto.com.br`.
+- Links do convite ou do painel recebem uma orientação específica em vez de um erro genérico.
 - Consultas SQL parametrizadas e saída HTML escapada.
 - Aprovação e bloqueio somente por administradores configurados.
 - Nome completo do Telegram não é publicado.
@@ -52,12 +57,14 @@ Copie `.env.example` para `.env` e configure:
 - `PUBLIC_BASE_URL`: domínio HTTPS público.
 - `OFFICIAL_SITE_URL`: endereço do site verdadeiro que exibirá os links do afiliado.
 - `OFFICIAL_SITE_INTEGRATION_ENABLED`: ativa os links do site oficial somente depois que a integração está publicada; mantenha `false` durante a preparação.
+- `AFFILIATE_INVITE_URL`: convite oficial de afiliação da BaltigoFlix na Cakto.
+- `SUPPORT_USERNAME`: usuário do Telegram do suporte; o bot cria botões diretos em todas as etapas.
 - `CHECKOUT_MONTHLY`: ID ou IDs do checkout mensal.
 - `CHECKOUT_QUARTERLY`: ID ou IDs do checkout trimestral.
 - `CHECKOUT_SEMIANNUAL`: ID ou IDs do checkout semestral.
 - `CHECKOUT_ANNUAL`: ID ou IDs do checkout anual.
 
-Quando um plano tiver mais de um checkout oficial, separe os IDs por vírgula, por exemplo: `3fsy24d,35znaim`. O sistema salva e reutiliza exatamente o checkout enviado pelo afiliado.
+Quando um plano tiver mais de um checkout oficial, separe os IDs por vírgula, por exemplo: `3fsy24d,35znaim`. Se o único link enviado pelo afiliado usar uma dessas opções, o bot preserva esse checkout; nos demais planos, usa a primeira opção oficial configurada.
 
 O comando `/meuid` mostra o ID numérico do usuário no Telegram.
 
@@ -67,7 +74,7 @@ Nunca envie ou publique o token do bot. Se um token já apareceu em chat, commit
 
 ## Aprovação
 
-Quando o cadastro é concluído, cada administrador recebe os botões `Aprovar` e `Bloquear`. Uma página pendente responde como não encontrada e só é publicada após a aprovação.
+Quando o cadastro é concluído, cada administrador recebe os botões `Aprovar` e `Bloquear`, o plano usado na validação e o identificador encontrado. Uma página pendente responde como não encontrada e só é publicada após a aprovação.
 
 Para testes internos, `AUTO_APPROVE_AFFILIATES=true` desativa essa revisão. Não é recomendado em produção.
 

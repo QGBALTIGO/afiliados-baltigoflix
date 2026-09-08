@@ -5,6 +5,7 @@ from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
 
 
 URL_RE = re.compile(r"https?://[^\s<>\]\[\"']+", re.I)
+BARE_CAKTO_URL_RE = re.compile(r"(?:^|\s)(pay\.cakto\.com\.br/[^\s<>\]\[\"']+)", re.I)
 CHECKOUT_ID_RE = re.compile(r"[A-Za-z0-9_-]{1,160}")
 AFFILIATE_ID_RE = re.compile(r"[A-Za-z0-9._:@+-]{1,128}")
 AFFILIATE_KEYS = ("affiliate", "ref")
@@ -83,9 +84,12 @@ def extract_url(text: str) -> str | None:
     if not text:
         return None
     match = URL_RE.search(text.strip())
-    if not match:
-        return None
-    return match.group(0).rstrip(".,;:!?)]}")
+    if match:
+        return match.group(0).rstrip(".,;:!?)]}")
+    bare_match = BARE_CAKTO_URL_RE.search(text.strip())
+    if bare_match:
+        return ("https://" + bare_match.group(1)).rstrip(".,;:!?)]}")
+    return None
 
 
 def detect_plan(checkout_id: str) -> str | None:
@@ -95,13 +99,15 @@ def detect_plan(checkout_id: str) -> str | None:
     return None
 
 
-def validate_checkout_link(text: str, expected_plan: str) -> ValidationResult:
-    if expected_plan not in PLAN_CONFIG:
-        return ValidationResult(False, "Plano solicitado inválido.")
-
+def validate_affiliate_link(text: str) -> ValidationResult:
+    """Valida um link pessoal de qualquer plano oficial configurado."""
     url = extract_url(text)
     if not url:
-        return ValidationResult(False, "Não encontrei um link http/https na mensagem.")
+        return ValidationResult(
+            False,
+            "Não encontrei um link de checkout. Copie na Cakto o seu link pessoal "
+            "que começa com pay.cakto.com.br e envie aqui.",
+        )
 
     try:
         parsed = urlparse(url)
@@ -113,8 +119,18 @@ def validate_checkout_link(text: str, expected_plan: str) -> ValidationResult:
         return ValidationResult(False, "O checkout precisa usar HTTPS.")
 
     host = (parsed.hostname or "").lower().rstrip(".")
+    if host in {"app.cakto.com.br", "sso.cakto.com.br"}:
+        return ValidationResult(
+            False,
+            "Esse é um link do painel ou do convite da Cakto, não o seu link pessoal. "
+            "Aceite o convite, abra o produto BaltigoFlix na área de afiliações e copie "
+            "um link de divulgação que começa com pay.cakto.com.br.",
+        )
     if host not in allowed_hosts():
-        return ValidationResult(False, "Esse domínio não está na lista de checkouts permitidos.")
+        return ValidationResult(
+            False,
+            "Esse endereço não é um checkout oficial da BaltigoFlix na Cakto.",
+        )
 
     if port not in (None, 443):
         return ValidationResult(False, "O checkout usa uma porta não permitida.")
@@ -129,16 +145,6 @@ def validate_checkout_link(text: str, expected_plan: str) -> ValidationResult:
         return ValidationResult(
             False,
             "Esse checkout não pertence à lista oficial configurada.",
-            checkout_id=checkout_id,
-        )
-
-    if detected != expected_plan:
-        detected_label = PLAN_CONFIG[detected][0]
-        expected_label = PLAN_CONFIG[expected_plan][0]
-        return ValidationResult(
-            False,
-            f"Esse link é do plano {detected_label}, mas agora preciso do plano {expected_label}.",
-            plan=detected,
             checkout_id=checkout_id,
         )
 
@@ -172,6 +178,27 @@ def validate_checkout_link(text: str, expected_plan: str) -> ValidationResult:
         affiliate_id=affiliate_id,
         affiliate_key=affiliate_key,
         checkout_id=checkout_id,
+    )
+
+
+def validate_checkout_link(text: str, expected_plan: str) -> ValidationResult:
+    """Compatibilidade para fluxos que exigem um plano específico."""
+    if expected_plan not in PLAN_CONFIG:
+        return ValidationResult(False, "Plano solicitado inválido.")
+
+    result = validate_affiliate_link(text)
+    if not result.ok or result.plan == expected_plan:
+        return result
+
+    detected_label = PLAN_CONFIG[result.plan][0]
+    expected_label = PLAN_CONFIG[expected_plan][0]
+    return ValidationResult(
+        False,
+        f"Esse link é do plano {detected_label}, mas agora preciso do plano {expected_label}.",
+        plan=result.plan,
+        affiliate_id=result.affiliate_id,
+        affiliate_key=result.affiliate_key,
+        checkout_id=result.checkout_id,
     )
 
 
