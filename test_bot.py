@@ -43,9 +43,9 @@ class BotFormattingTests(unittest.IsolatedAsyncioTestCase):
         self.assertIn("Programa oficial de afiliados", welcome_text())
         self.assertIn("receba comissão", welcome_text())
         labels = [button.text for row in main_menu().inline_keyboard for button in row]
-        self.assertIn("Como funciona", labels)
-        self.assertIn("Sobre a Cakto", labels)
-        self.assertIn("Falar com o suporte", labels)
+        self.assertIn("ℹ️ Como funciona", labels)
+        self.assertIn("🏦 Sobre a Cakto", labels)
+        self.assertIn("💬 Falar com o suporte", labels)
 
     def test_page_url_uses_the_official_site(self):
         os.environ["OFFICIAL_SITE_URL"] = "https://baltigoflix.com.br/"

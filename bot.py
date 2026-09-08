@@ -71,8 +71,8 @@ def support_url() -> str | None:
 def support_button() -> InlineKeyboardButton:
     url = support_url()
     if url:
-        return InlineKeyboardButton("Falar com o suporte", url=url)
-    return InlineKeyboardButton("Falar com o suporte", callback_data="support")
+        return InlineKeyboardButton("💬 Falar com o suporte", url=url)
+    return InlineKeyboardButton("💬 Falar com o suporte", callback_data="support")
 
 
 def support_note() -> str:
@@ -89,11 +89,11 @@ def onboarding_start_keyboard() -> InlineKeyboardMarkup:
         [
             [
                 InlineKeyboardButton(
-                    "Acessar a Cakto",
+                    "🔐 Acessar a Cakto",
                     url="https://app.cakto.com.br/",
                 )
             ],
-            [InlineKeyboardButton("Já acessei minha conta", callback_data="onboarding_invite")],
+            [InlineKeyboardButton("✅ Já acessei minha conta", callback_data="onboarding_invite")],
             [InlineKeyboardButton("⬅️ Voltar", callback_data="menu")],
             [support_button()],
         ]
@@ -104,10 +104,10 @@ def onboarding_invite_keyboard() -> InlineKeyboardMarkup:
     rows = []
     invite = affiliate_invite_url()
     if invite:
-        rows.append([InlineKeyboardButton("Abrir convite oficial", url=invite)])
+        rows.append([InlineKeyboardButton("🔗 Abrir convite oficial", url=invite)])
     rows.extend(
         [
-            [InlineKeyboardButton("Convite aceito — continuar", callback_data="onboarding_profile")],
+            [InlineKeyboardButton("✅ Convite aceito — continuar", callback_data="onboarding_profile")],
             [InlineKeyboardButton("⬅️ Voltar", callback_data="menu")],
             [support_button()],
         ]
@@ -117,16 +117,16 @@ def onboarding_invite_keyboard() -> InlineKeyboardMarkup:
 
 def main_menu() -> InlineKeyboardMarkup:
     buttons = [
-        [InlineKeyboardButton("Iniciar meu cadastro", callback_data="create")],
+        [InlineKeyboardButton("🚀 Iniciar meu cadastro", callback_data="create")],
         [
-            InlineKeyboardButton("Como funciona", callback_data="earnings"),
-            InlineKeyboardButton("Comissões", callback_data="commissions"),
+            InlineKeyboardButton("ℹ️ Como funciona", callback_data="earnings"),
+            InlineKeyboardButton("💰 Comissões", callback_data="commissions"),
         ],
         [
-            InlineKeyboardButton("Sobre a Cakto", callback_data="cakto"),
-            InlineKeyboardButton("Minha página", callback_data="my_page"),
+            InlineKeyboardButton("🏦 Sobre a Cakto", callback_data="cakto"),
+            InlineKeyboardButton("🌐 Minha página", callback_data="my_page"),
         ],
-        [InlineKeyboardButton("Guia de cadastro", callback_data="tutorial")],
+        [InlineKeyboardButton("📖 Guia de cadastro", callback_data="tutorial")],
         [support_button()],
     ]
     return InlineKeyboardMarkup(buttons)
@@ -144,7 +144,7 @@ def back_menu() -> InlineKeyboardMarkup:
 def cancel_support_keyboard() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(
         [
-            [InlineKeyboardButton("Cancelar cadastro", callback_data="menu")],
+            [InlineKeyboardButton("✖️ Cancelar cadastro", callback_data="menu")],
             [support_button()],
         ]
     )
@@ -250,7 +250,7 @@ async def menu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             parse_mode="HTML",
             reply_markup=InlineKeyboardMarkup(
                 [
-                    [InlineKeyboardButton("Iniciar cadastro", callback_data="create")],
+                    [InlineKeyboardButton("🚀 Iniciar cadastro", callback_data="create")],
                     [InlineKeyboardButton("⬅️ Voltar ao menu", callback_data="menu")],
                     [support_button()],
                 ]
@@ -298,7 +298,7 @@ async def menu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 parse_mode="HTML",
                 reply_markup=InlineKeyboardMarkup(
                     [
-                        [InlineKeyboardButton("Iniciar cadastro", callback_data="create")],
+                        [InlineKeyboardButton("🚀 Iniciar cadastro", callback_data="create")],
                         [InlineKeyboardButton("⬅️ Voltar", callback_data="menu")],
                         [support_button()],
                     ]
@@ -315,7 +315,7 @@ async def menu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 parse_mode="HTML",
                 reply_markup=InlineKeyboardMarkup(
                     [
-                        [InlineKeyboardButton("Atualizar cadastro", callback_data="create")],
+                        [InlineKeyboardButton("✏️ Atualizar cadastro", callback_data="create")],
                         [InlineKeyboardButton("⬅️ Voltar", callback_data="menu")],
                         [support_button()],
                     ]
@@ -333,8 +333,8 @@ async def menu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 parse_mode="HTML",
                 reply_markup=InlineKeyboardMarkup(
                     [
-                        [InlineKeyboardButton("Abrir minha página", url=url)],
-                        [InlineKeyboardButton("Atualizar cadastro", callback_data="create")],
+                        [InlineKeyboardButton("🌐 Abrir minha página", url=url)],
+                        [InlineKeyboardButton("✏️ Atualizar cadastro", callback_data="create")],
                         [InlineKeyboardButton("⬅️ Voltar", callback_data="menu")],
                         [support_button()],
                     ]
@@ -555,8 +555,8 @@ async def receive_affiliate_link(update: Update, context: ContextTypes.DEFAULT_T
             parse_mode="HTML",
             reply_markup=InlineKeyboardMarkup(
                 [
-                    [InlineKeyboardButton("Abrir minha página", url=url)],
-                    [InlineKeyboardButton("Voltar ao menu", callback_data="menu")],
+                    [InlineKeyboardButton("🌐 Abrir minha página", url=url)],
+                    [InlineKeyboardButton("⬅️ Voltar ao menu", callback_data="menu")],
                     [support_button()],
                 ]
             ),
@@ -574,7 +574,7 @@ async def receive_affiliate_link(update: Update, context: ContextTypes.DEFAULT_T
             parse_mode="HTML",
             reply_markup=InlineKeyboardMarkup(
                 [
-                    [InlineKeyboardButton("Voltar ao menu", callback_data="menu")],
+                    [InlineKeyboardButton("⬅️ Voltar ao menu", callback_data="menu")],
                     [support_button()],
                 ]
             ),
@@ -668,7 +668,7 @@ async def admin_action(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 parse_mode="HTML",
                 reply_markup=InlineKeyboardMarkup(
                     [
-                        [InlineKeyboardButton("Abrir minha página", url=url)],
+                        [InlineKeyboardButton("🌐 Abrir minha página", url=url)],
                         [support_button()],
                     ]
                 ),
