@@ -6,7 +6,6 @@ import sqlite3
 from urllib.parse import urlencode
 
 from telegram import BotCommand, InlineKeyboardButton, InlineKeyboardMarkup, Update
-from telegram.helpers import escape_markdown
 from telegram.ext import (
     Application,
     CallbackQueryHandler,
@@ -59,13 +58,6 @@ def page_url(slug: str) -> str:
     return env("PUBLIC_BASE_URL", "http://localhost:8000").rstrip("/") + "/" + slug
 
 
-def support_text(*, markdown: bool = False) -> str:
-    username = env("SUPPORT_USERNAME", "@seu_suporte")
-    if markdown:
-        username = escape_markdown(username, version=1)
-    return f"🆘 Atendimento humano: {username}"
-
-
 def support_url() -> str | None:
     value = env("SUPPORT_USERNAME", "@seu_suporte")
     if value.startswith(("https://", "http://")):
@@ -79,8 +71,12 @@ def support_url() -> str | None:
 def support_button() -> InlineKeyboardButton:
     url = support_url()
     if url:
-        return InlineKeyboardButton("🆘 Falar com o suporte", url=url)
-    return InlineKeyboardButton("🆘 Falar com o suporte", callback_data="support")
+        return InlineKeyboardButton("Falar com o suporte", url=url)
+    return InlineKeyboardButton("Falar com o suporte", callback_data="support")
+
+
+def support_note() -> str:
+    return "<i>Precisa de ajuda? Nossa equipe está disponível no botão abaixo.</i>"
 
 
 def affiliate_invite_url() -> str | None:
@@ -93,11 +89,11 @@ def onboarding_start_keyboard() -> InlineKeyboardMarkup:
         [
             [
                 InlineKeyboardButton(
-                    "1️⃣ Criar ou entrar na Cakto",
+                    "Acessar a Cakto",
                     url="https://app.cakto.com.br/",
                 )
             ],
-            [InlineKeyboardButton("➡️ Já entrei na Cakto", callback_data="onboarding_invite")],
+            [InlineKeyboardButton("Já acessei minha conta", callback_data="onboarding_invite")],
             [InlineKeyboardButton("⬅️ Voltar", callback_data="menu")],
             [support_button()],
         ]
@@ -108,10 +104,10 @@ def onboarding_invite_keyboard() -> InlineKeyboardMarkup:
     rows = []
     invite = affiliate_invite_url()
     if invite:
-        rows.append([InlineKeyboardButton("2️⃣ Aceitar convite BaltigoFlix", url=invite)])
+        rows.append([InlineKeyboardButton("Abrir convite oficial", url=invite)])
     rows.extend(
         [
-            [InlineKeyboardButton("✅ Já aceitei o convite", callback_data="onboarding_profile")],
+            [InlineKeyboardButton("Convite aceito — continuar", callback_data="onboarding_profile")],
             [InlineKeyboardButton("⬅️ Voltar", callback_data="menu")],
             [support_button()],
         ]
@@ -121,18 +117,16 @@ def onboarding_invite_keyboard() -> InlineKeyboardMarkup:
 
 def main_menu() -> InlineKeyboardMarkup:
     buttons = [
-        [InlineKeyboardButton("🚀 Quero começar", callback_data="create")],
+        [InlineKeyboardButton("Iniciar meu cadastro", callback_data="create")],
         [
-            InlineKeyboardButton("💸 Como ganho dinheiro?", callback_data="earnings"),
+            InlineKeyboardButton("Como funciona", callback_data="earnings"),
+            InlineKeyboardButton("Comissões", callback_data="commissions"),
         ],
         [
-            InlineKeyboardButton("❓ O que é a Cakto?", callback_data="cakto"),
-            InlineKeyboardButton("💰 Comissões", callback_data="commissions"),
+            InlineKeyboardButton("Sobre a Cakto", callback_data="cakto"),
+            InlineKeyboardButton("Minha página", callback_data="my_page"),
         ],
-        [
-            InlineKeyboardButton("📖 Passo a passo", callback_data="tutorial"),
-            InlineKeyboardButton("🌐 Minha página", callback_data="my_page"),
-        ],
+        [InlineKeyboardButton("Guia de cadastro", callback_data="tutorial")],
         [support_button()],
     ]
     return InlineKeyboardMarkup(buttons)
@@ -150,7 +144,7 @@ def back_menu() -> InlineKeyboardMarkup:
 def cancel_support_keyboard() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(
         [
-            [InlineKeyboardButton("❌ Cancelar e voltar", callback_data="menu")],
+            [InlineKeyboardButton("Cancelar cadastro", callback_data="menu")],
             [support_button()],
         ]
     )
@@ -159,21 +153,24 @@ def cancel_support_keyboard() -> InlineKeyboardMarkup:
 def welcome_text() -> str:
     brand = env("BRAND_NAME", "Baltigo")
     return (
-        f"🤝 *Programa de Afiliados {escape_markdown(brand, version=1)}*\n\n"
-        "Ganhe dinheiro indicando a BaltigoFlix. Você recebe uma página personalizada, "
-        "divulga para outras pessoas e recebe comissão pelas vendas aprovadas.\n\n"
-        "✅ Cadastro gratuito\n"
-        "✅ Não precisa atender o cliente\n"
-        "✅ Pagamentos e comissões pela Cakto\n"
-        "✅ Sua própria página da BaltigoFlix\n\n"
-        "Não sabe como funciona? Sem problema: o bot explica cada etapa e o suporte pode ajudar."
+        f"<b>{html.escape(brand.upper())} PARCEIROS</b>\n"
+        "<i>Programa oficial de afiliados</i>\n\n"
+        "Indique a BaltigoFlix, compartilhe sua página personalizada e receba comissão "
+        "por cada venda válida realizada por meio dela.\n\n"
+        "<b>Você recebe</b>\n"
+        "• uma página exclusiva para divulgação;\n"
+        "• identificação automática das suas vendas;\n"
+        "• comissão registrada na Cakto;\n"
+        "• suporte da equipe BaltigoFlix.\n\n"
+        "O cadastro é gratuito e leva apenas alguns minutos.\n\n"
+        "<i>Selecione uma opção para continuar.</i>"
     )
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data.clear()
     await update.effective_message.reply_text(
-        welcome_text(), parse_mode="Markdown", reply_markup=main_menu()
+        welcome_text(), parse_mode="HTML", reply_markup=main_menu()
     )
     return ConversationHandler.END
 
@@ -185,71 +182,75 @@ async def menu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if action == "menu":
         await query.edit_message_text(
-            welcome_text(), parse_mode="Markdown", reply_markup=main_menu()
+            welcome_text(), parse_mode="HTML", reply_markup=main_menu()
         )
     elif action == "earnings":
         await query.edit_message_text(
-            "💸 *Como você ganha dinheiro?*\n\n"
-            "1️⃣ Você recebe uma página personalizada da BaltigoFlix.\n"
-            "2️⃣ Divulga essa página nos seus canais, grupos ou redes sociais.\n"
-            "3️⃣ A pessoa escolhe um plano e paga pelo checkout oficial.\n"
-            "4️⃣ A Cakto identifica que a venda veio de você e registra sua comissão.\n"
-            "5️⃣ O saldo e as regras de saque ficam disponíveis na sua conta Cakto.\n\n"
-            "A equipe BaltigoFlix cuida da liberação e do atendimento ao comprador. "
-            "Você cuida apenas da divulgação.\n\n"
-            "⚠️ Não existe ganho garantido: você recebe quando realiza vendas válidas e aprovadas. "
-            "Reembolsos ou cancelamentos podem retirar a comissão.\n\n"
-            + support_text(markdown=True),
-            parse_mode="Markdown",
+            "<b>COMO FUNCIONA</b>\n\n"
+            "Ao concluir o cadastro, você recebe uma página personalizada da BaltigoFlix. "
+            "Ela pode ser divulgada em canais, grupos, redes sociais ou diretamente aos seus contatos.\n\n"
+            "<b>O processo é simples</b>\n"
+            "1. O cliente acessa sua página.\n"
+            "2. Escolhe um dos planos disponíveis.\n"
+            "3. Finaliza o pagamento no checkout oficial.\n"
+            "4. A Cakto identifica sua indicação.\n"
+            "5. A comissão é registrada na sua conta.\n\n"
+            "A equipe BaltigoFlix realiza a liberação do serviço e atende o comprador. "
+            "Sua responsabilidade é a divulgação.\n\n"
+            "<i>Os ganhos dependem das vendas aprovadas. Cancelamentos, reembolsos ou "
+            "contestações podem alterar a comissão.</i>\n\n"
+            + support_note(),
+            parse_mode="HTML",
             reply_markup=back_menu(),
         )
     elif action == "cakto":
         await query.edit_message_text(
-            "❓ *O que é a Cakto?*\n\n"
-            "A Cakto é a plataforma de pagamentos usada pela BaltigoFlix. Ela é separada "
-            "do Telegram e funciona como a sua carteira de afiliado.\n\n"
-            "Na Cakto você:\n"
-            "• cria sua conta gratuitamente;\n"
-            "• aceita o convite da BaltigoFlix;\n"
-            "• recebe seu identificador pessoal;\n"
-            "• acompanha vendas e comissões;\n"
-            "• solicita o saque conforme as regras da plataforma.\n\n"
-            "Você não precisa comprar nenhum plano para ser afiliado.\n\n"
-            + support_text(markdown=True),
-            parse_mode="Markdown",
+            "<b>SOBRE A CAKTO</b>\n\n"
+            "A Cakto é a plataforma de pagamentos utilizada pela BaltigoFlix. É nela que "
+            "sua afiliação é vinculada e suas comissões são registradas.\n\n"
+            "<b>Na sua conta Cakto você poderá</b>\n"
+            "• aceitar o convite da BaltigoFlix;\n"
+            "• obter seu link pessoal de afiliado;\n"
+            "• acompanhar vendas e comissões;\n"
+            "• consultar prazos e solicitar saques.\n\n"
+            "A criação da conta é gratuita. Você não precisa comprar uma assinatura para participar.\n\n"
+            + support_note(),
+            parse_mode="HTML",
             reply_markup=back_menu(),
         )
     elif action == "commissions":
         await query.edit_message_text(
-            "💰 *Níveis de comissão*\n\n"
-            f"🌱 Ao começar: *{env('COMMISSION_INITIAL', '50%')}*\n"
-            f"🚀 Ao atingir 100 vendas: *{env('COMMISSION_100', '70%')}*\n"
-            f"🔥 Ao atingir 500 vendas: *{env('COMMISSION_500', '75%')}*\n\n"
-            "A comissão é calculada sobre vendas válidas conforme a configuração da oferta. "
-            "O valor final, o prazo de liberação e o saque aparecem na Cakto.\n\n"
-            "Mudanças de nível são conferidas pela equipe. Os percentuais não são promessa de renda.\n\n"
-            + support_text(markdown=True),
-            parse_mode="Markdown",
+            "<b>COMISSÕES</b>\n\n"
+            f"<b>Nível inicial</b> — {html.escape(env('COMMISSION_INITIAL', '50%'))}\n"
+            f"<b>A partir de 100 vendas</b> — {html.escape(env('COMMISSION_100', '70%'))}\n"
+            f"<b>A partir de 500 vendas</b> — {html.escape(env('COMMISSION_500', '75%'))}\n\n"
+            "São consideradas as vendas válidas e aprovadas. O valor final da comissão, "
+            "o prazo de liberação e as condições de saque ficam disponíveis na Cakto.\n\n"
+            "A progressão de nível é conferida pela equipe BaltigoFlix.\n\n"
+            "<i>Os percentuais indicam a regra do programa e não representam garantia de renda.</i>\n\n"
+            + support_note(),
+            parse_mode="HTML",
             reply_markup=back_menu(),
         )
     elif action == "tutorial":
         await query.edit_message_text(
-            "📖 *Passo a passo completo*\n\n"
-            "1️⃣ Toque em “Quero começar”.\n"
-            "2️⃣ Crie sua conta gratuita na Cakto ou faça login.\n"
-            "3️⃣ Volte ao bot e abra novamente o convite BaltigoFlix.\n"
-            "4️⃣ Aceite o convite de afiliação.\n"
-            "5️⃣ Na Cakto, abra a BaltigoFlix na área de produtos afiliados.\n"
-            "6️⃣ Copie *somente um* link pessoal de qualquer plano.\n"
-            "7️⃣ Envie esse link ao bot e escolha o nome da sua página.\n"
-            "8️⃣ Aguarde a conferência da equipe.\n\n"
-            "O link correto começa com `https://pay.cakto.com.br/` e possui seu identificador "
-            "de afiliado. Não envie o link de convite.\n\n"
-            + support_text(markdown=True),
-            parse_mode="Markdown",
+            "<b>GUIA DE CADASTRO</b>\n\n"
+            "<b>1. Acesse a Cakto</b>\n"
+            "Crie sua conta gratuita ou entre em uma conta existente.\n\n"
+            "<b>2. Aceite o convite</b>\n"
+            "Retorne ao bot, abra o convite oficial da BaltigoFlix e confirme a afiliação.\n\n"
+            "<b>3. Escolha seu endereço</b>\n"
+            "Defina o nome que será usado na sua página personalizada.\n\n"
+            "<b>4. Envie um único link</b>\n"
+            "Na Cakto, copie o link pessoal de qualquer plano BaltigoFlix e envie ao bot. "
+            "Os demais planos serão configurados automaticamente.\n\n"
+            "O link correto começa com <code>https://pay.cakto.com.br/</code>. "
+            "O link do convite não serve nesta etapa.\n\n"
+            + support_note(),
+            parse_mode="HTML",
             reply_markup=InlineKeyboardMarkup(
                 [
-                    [InlineKeyboardButton("🚀 Começar agora", callback_data="create")],
+                    [InlineKeyboardButton("Iniciar cadastro", callback_data="create")],
                     [InlineKeyboardButton("⬅️ Voltar ao menu", callback_data="menu")],
                     [support_button()],
                 ]
@@ -259,38 +260,45 @@ async def menu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         invite = affiliate_invite_url()
         if not invite:
             await query.edit_message_text(
-                "⚙️ O convite está temporariamente indisponível. Fale com o suporte para receber ajuda.",
+                "<b>Convite indisponível</b>\n\n"
+                "Não foi possível abrir o convite neste momento. Fale com nossa equipe para continuar.",
+                parse_mode="HTML",
                 reply_markup=back_menu(),
             )
             return
         await query.edit_message_text(
-            "🤝 *Etapa 2 de 3 — Aceite o convite*\n\n"
-            "Agora abra o convite oficial da BaltigoFlix e confirme que deseja ser afiliado.\n\n"
-            "⚠️ Se a Cakto pedir login novamente, entre na conta, volte a esta conversa e abra "
-            "o convite mais uma vez. Isso evita que você fique apenas na tela inicial da Cakto.\n\n"
-            "Depois de aceitar, volte aqui e toque em “Já aceitei o convite”.\n\n"
-            + support_text(markdown=True),
-            parse_mode="Markdown",
+            "<b>CADASTRO · ETAPA 2 DE 4</b>\n"
+            "<b>Aceite o convite da BaltigoFlix</b>\n\n"
+            "Abra o convite oficial e confirme sua participação no programa de afiliados.\n\n"
+            "Se a Cakto solicitar o login, acesse sua conta, retorne a esta conversa e abra "
+            "o convite novamente.\n\n"
+            "Depois da confirmação, selecione <b>“Convite aceito — continuar”</b>.\n\n"
+            + support_note(),
+            parse_mode="HTML",
             reply_markup=onboarding_invite_keyboard(),
         )
     elif action == "support":
         await query.edit_message_text(
-            "🆘 *Suporte humano*\n\n"
-            "Se tiver dúvida para criar a conta, aceitar o convite, encontrar seu link, "
-            "acompanhar comissão ou usar sua página, fale com nossa equipe.\n\n"
-            "Envie uma mensagem explicando em qual etapa parou e, se possível, uma captura da tela.\n\n"
-            + support_text(markdown=True),
-            parse_mode="Markdown",
+            "<b>CENTRAL DE AJUDA</b>\n\n"
+            "Nossa equipe pode ajudar com cadastro na Cakto, aceite do convite, localização "
+            "do link pessoal, comissões e uso da página de divulgação.\n\n"
+            "Ao entrar em contato, informe em qual etapa encontrou dificuldade. Se possível, "
+            "envie também uma captura da tela.\n\n"
+            f"<b>Atendimento:</b> {html.escape(env('SUPPORT_USERNAME', '@seu_suporte'))}",
+            parse_mode="HTML",
             reply_markup=back_menu(),
         )
     elif action == "my_page":
         row = get_affiliate_by_telegram(query.from_user.id)
         if not row:
             await query.edit_message_text(
-                "Você ainda não criou uma página.",
+                "<b>MINHA PÁGINA</b>\n\n"
+                "Você ainda não possui uma página cadastrada. Inicie o cadastro para criar "
+                "seu endereço personalizado.",
+                parse_mode="HTML",
                 reply_markup=InlineKeyboardMarkup(
                     [
-                        [InlineKeyboardButton("🚀 Criar agora", callback_data="create")],
+                        [InlineKeyboardButton("Iniciar cadastro", callback_data="create")],
                         [InlineKeyboardButton("⬅️ Voltar", callback_data="menu")],
                         [support_button()],
                     ]
@@ -298,13 +306,16 @@ async def menu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
         elif not row["active"]:
             await query.edit_message_text(
-                "⏳ *Página aguardando aprovação*\n\n"
-                f"Endereço reservado: `{page_url(row['slug'])}`\n\n"
-                "Você receberá uma mensagem quando a equipe concluir a revisão.",
-                parse_mode="Markdown",
+                "<b>MINHA PÁGINA</b>\n"
+                "<i>Aguardando aprovação</i>\n\n"
+                f"<b>Endereço reservado</b>\n<code>{html.escape(page_url(row['slug']))}</code>\n\n"
+                "A equipe está conferindo sua afiliação na Cakto. Você receberá uma mensagem "
+                "assim que a página for liberada.\n\n"
+                + support_note(),
+                parse_mode="HTML",
                 reply_markup=InlineKeyboardMarkup(
                     [
-                        [InlineKeyboardButton("🔄 Reenviar meu link", callback_data="create")],
+                        [InlineKeyboardButton("Atualizar cadastro", callback_data="create")],
                         [InlineKeyboardButton("⬅️ Voltar", callback_data="menu")],
                         [support_button()],
                     ]
@@ -313,12 +324,17 @@ async def menu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         else:
             url = page_url(row["slug"])
             await query.edit_message_text(
-                f"🌐 *Sua página*\n\n`{url}`",
-                parse_mode="Markdown",
+                "<b>MINHA PÁGINA</b>\n"
+                "<i>Cadastro aprovado</i>\n\n"
+                f"<code>{html.escape(url)}</code>\n\n"
+                "Compartilhe este endereço. As vendas realizadas por meio dele serão "
+                "identificadas com seus dados de afiliado.\n\n"
+                + support_note(),
+                parse_mode="HTML",
                 reply_markup=InlineKeyboardMarkup(
                     [
-                        [InlineKeyboardButton("🌐 Abrir página", url=url)],
-                        [InlineKeyboardButton("🔄 Atualizar meu link", callback_data="create")],
+                        [InlineKeyboardButton("Abrir minha página", url=url)],
+                        [InlineKeyboardButton("Atualizar cadastro", callback_data="create")],
                         [InlineKeyboardButton("⬅️ Voltar", callback_data="menu")],
                         [support_button()],
                     ]
@@ -339,14 +355,15 @@ async def begin_create(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if query.data == "create":
         context.user_data.clear()
         await query.edit_message_text(
-            "🍀 *Etapa 1 de 3 — Entre na Cakto*\n\n"
-            "A Cakto é a plataforma que registra suas vendas, calcula sua comissão e disponibiliza "
-            "o saldo para saque. Criar a conta é gratuito.\n\n"
-            "Toque no primeiro botão para criar sua conta ou fazer login. Quando terminar, volte "
-            "a esta conversa e toque em “Já entrei na Cakto”.\n\n"
-            "Você não precisa comprar uma assinatura para participar.\n\n"
-            + support_text(markdown=True),
-            parse_mode="Markdown",
+            "<b>CADASTRO · ETAPA 1 DE 4</b>\n"
+            "<b>Acesse sua conta Cakto</b>\n\n"
+            "A Cakto registra suas vendas, calcula as comissões e disponibiliza o saldo "
+            "de acordo com as regras da plataforma.\n\n"
+            "Crie uma conta gratuitamente ou entre em uma conta existente. Quando concluir, "
+            "retorne a esta conversa e selecione <b>“Já acessei minha conta”</b>.\n\n"
+            "<i>Não é necessário comprar uma assinatura para participar.</i>\n\n"
+            + support_note(),
+            parse_mode="HTML",
             reply_markup=onboarding_start_keyboard(),
         )
         return ConversationHandler.END
@@ -358,24 +375,25 @@ async def begin_create(update: Update, context: ContextTypes.DEFAULT_TYPE):
         errors.append("Convite da Cakto não configurado")
     if errors:
         await query.edit_message_text(
-            "⚙️ O cadastro está temporariamente indisponível. Nossa equipe já pode ajudar você.\n\n"
-            + support_text(markdown=True),
-            parse_mode="Markdown",
+            "<b>Cadastro temporariamente indisponível</b>\n\n"
+            "Não foi possível iniciar o cadastro agora. Fale com nossa equipe para receber ajuda.",
+            parse_mode="HTML",
             reply_markup=back_menu(),
         )
         return ConversationHandler.END
 
     context.user_data.clear()
     await query.edit_message_text(
-        "🌐 *Etapa 3 de 3 — Crie sua página*\n\n"
-        "Primeiro, escolha o nome que aparecerá no endereço da sua página. Seu nome completo "
-        "do Telegram não será publicado.\n\n"
-        "Exemplo: se você escrever `gabriel`, sua página será:\n"
-        "`baltigoflix.com.br/?afiliado=gabriel`\n\n"
-        "Use de 3 a 30 caracteres: letras, números e hífen.\n\n"
-        "Digite o nome desejado agora.\n\n"
-        + support_text(markdown=True),
-        parse_mode="Markdown",
+        "<b>CADASTRO · ETAPA 3 DE 4</b>\n"
+        "<b>Escolha o endereço da sua página</b>\n\n"
+        "Digite o nome que deseja utilizar no endereço público. Seu nome completo do Telegram "
+        "não será exibido.\n\n"
+        "<b>Exemplo</b>\n"
+        "Nome escolhido: <code>gabriel</code>\n"
+        "Página: <code>baltigoflix.com.br/?afiliado=gabriel</code>\n\n"
+        "Use entre 3 e 30 caracteres, somente letras sem acento, números e hífen.\n\n"
+        + support_note(),
+        parse_mode="HTML",
         reply_markup=cancel_support_keyboard(),
     )
     return ASK_SLUG
@@ -394,20 +412,21 @@ async def receive_slug(update: Update, context: ContextTypes.DEFAULT_TYPE):
     slug = normalize_slug(update.message.text)
     if not slug:
         await update.message.reply_text(
-            "❌ Esse endereço não é válido.\n\n"
-            "Use de 3 a 30 caracteres, somente letras sem acento, números e hífen.\n"
-            "Exemplo: `gabriel-tv`\n\n"
-            + support_text(markdown=True),
-            parse_mode="Markdown",
+            "<b>Endereço inválido</b>\n\n"
+            "Use entre 3 e 30 caracteres, somente letras sem acento, números e hífen.\n\n"
+            "Exemplo válido: <code>gabriel-tv</code>\n\n"
+            + support_note(),
+            parse_mode="HTML",
             reply_markup=cancel_support_keyboard(),
         )
         return ASK_SLUG
 
     if not slug_available(slug, update.effective_user.id):
         await update.message.reply_text(
-            "❌ Esse endereço já está reservado. Escolha outro nome.\n\n"
-            + support_text(markdown=True),
-            parse_mode="Markdown",
+            "<b>Endereço indisponível</b>\n\n"
+            "Esse nome já está reservado. Escolha outra opção para continuar.\n\n"
+            + support_note(),
+            parse_mode="HTML",
             reply_markup=cancel_support_keyboard(),
         )
         return ASK_SLUG
@@ -419,16 +438,17 @@ async def receive_slug(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def ask_affiliate_link(update: Update):
     await update.message.reply_text(
-        "🔗 *Agora envie somente um link*\n\n"
-        "Na Cakto, abra o produto BaltigoFlix na área de afiliações e copie seu link pessoal "
-        "de qualquer plano: mensal, trimestral, semestral ou anual.\n\n"
-        "O link correto começa com:\n"
-        "`https://pay.cakto.com.br/`\n\n"
-        "Cole o link completo aqui. O bot encontrará seu identificador e criará automaticamente "
-        "os quatro planos — você não precisa copiar os outros links.\n\n"
-        "⚠️ Não envie novamente o link do convite.\n\n"
-        + support_text(markdown=True),
-        parse_mode="Markdown",
+        "<b>CADASTRO · ETAPA 4 DE 4</b>\n"
+        "<b>Envie seu link pessoal</b>\n\n"
+        "Na Cakto, acesse o produto BaltigoFlix na área de afiliações e copie o seu link "
+        "de divulgação de qualquer plano.\n\n"
+        "<b>Formato esperado</b>\n"
+        "<code>https://pay.cakto.com.br/...</code>\n\n"
+        "Envie apenas um link. O sistema identificará seus dados e configurará automaticamente "
+        "os demais planos.\n\n"
+        "<i>O link do convite não é um link de divulgação.</i>\n\n"
+        + support_note(),
+        parse_mode="HTML",
         reply_markup=cancel_support_keyboard(),
     )
 
@@ -478,11 +498,11 @@ async def receive_affiliate_link(update: Update, context: ContextTypes.DEFAULT_T
     result = validate_affiliate_link(update.message.text)
     if not result.ok:
         await update.message.reply_text(
-            "❌ *Ainda não consegui validar esse link*\n\n"
-            + result.message
-            + "\n\nCopie novamente o link pessoal na Cakto e envie aqui.\n\n"
-            + support_text(markdown=True),
-            parse_mode="Markdown",
+            "<b>Não foi possível validar o link</b>\n\n"
+            + html.escape(result.message)
+            + "\n\nConfira o endereço na Cakto e envie novamente.\n\n"
+            + support_note(),
+            parse_mode="HTML",
             reply_markup=cancel_support_keyboard(),
         )
         return ASK_AFFILIATE_LINK
@@ -491,7 +511,9 @@ async def receive_affiliate_link(update: Update, context: ContextTypes.DEFAULT_T
     if not slug:
         context.user_data.clear()
         await update.message.reply_text(
-            "A sessão expirou. Use /start para começar novamente.\n\n" + support_text(),
+            "<b>Sessão encerrada</b>\n\n"
+            "Use /start para iniciar um novo cadastro ou fale com o suporte.",
+            parse_mode="HTML",
             reply_markup=main_menu(),
         )
         return ConversationHandler.END
@@ -513,8 +535,9 @@ async def receive_affiliate_link(update: Update, context: ContextTypes.DEFAULT_T
     except sqlite3.IntegrityError:
         logger.exception("Conflito ao salvar slug %s", slug)
         await update.message.reply_text(
-            "Esse endereço acabou de ser reservado por outra pessoa. Use /start e escolha outro.\n\n"
-            + support_text(),
+            "<b>Endereço indisponível</b>\n\n"
+            "Esse nome foi reservado durante o cadastro. Use /start para escolher outro endereço.",
+            parse_mode="HTML",
             reply_markup=main_menu(),
         )
         context.user_data.clear()
@@ -524,16 +547,16 @@ async def receive_affiliate_link(update: Update, context: ContextTypes.DEFAULT_T
     url = page_url(slug)
     if auto_approve:
         await update.message.reply_text(
-            "🎉 *Tudo pronto! Sua página foi criada*\n\n"
-            f"`{url}`\n\n"
-            "O bot usou seu único link para configurar automaticamente os quatro planos. "
-            "Agora você pode divulgar essa página e receber comissão pelas vendas aprovadas.\n\n"
-            + support_text(markdown=True),
-            parse_mode="Markdown",
+            "<b>CADASTRO CONCLUÍDO</b>\n\n"
+            "Sua página foi criada e os quatro planos foram configurados com seus dados de afiliado.\n\n"
+            f"<b>Seu endereço</b>\n<code>{html.escape(url)}</code>\n\n"
+            "Compartilhe essa página para começar a divulgar a BaltigoFlix.\n\n"
+            + support_note(),
+            parse_mode="HTML",
             reply_markup=InlineKeyboardMarkup(
                 [
-                    [InlineKeyboardButton("🌐 Abrir minha página", url=url)],
-                    [InlineKeyboardButton("🏠 Menu", callback_data="menu")],
+                    [InlineKeyboardButton("Abrir minha página", url=url)],
+                    [InlineKeyboardButton("Voltar ao menu", callback_data="menu")],
                     [support_button()],
                 ]
             ),
@@ -541,16 +564,17 @@ async def receive_affiliate_link(update: Update, context: ContextTypes.DEFAULT_T
     else:
         await notify_admins(context, row, result.plan)
         await update.message.reply_text(
-            "✅ *Link validado e cadastro enviado*\n\n"
-            "O bot encontrou seu identificador e configurou automaticamente os quatro planos.\n\n"
-            f"Seu endereço reservado é `{url}`.\n\n"
-            "Agora a equipe confirmará sua afiliação na Cakto. Você receberá uma mensagem quando "
-            "a página for liberada.\n\n"
-            + support_text(markdown=True),
-            parse_mode="Markdown",
+            "<b>CADASTRO RECEBIDO</b>\n"
+            "<i>Aguardando análise</i>\n\n"
+            "Seu link foi validado e os quatro planos foram configurados. Agora a equipe "
+            "confirmará sua afiliação na Cakto.\n\n"
+            f"<b>Endereço reservado</b>\n<code>{html.escape(url)}</code>\n\n"
+            "Você será avisado assim que a página estiver disponível.\n\n"
+            + support_note(),
+            parse_mode="HTML",
             reply_markup=InlineKeyboardMarkup(
                 [
-                    [InlineKeyboardButton("🏠 Voltar ao menu", callback_data="menu")],
+                    [InlineKeyboardButton("Voltar ao menu", callback_data="menu")],
                     [support_button()],
                 ]
             ),
@@ -560,24 +584,29 @@ async def receive_affiliate_link(update: Update, context: ContextTypes.DEFAULT_T
 
 async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data.clear()
-    await update.effective_message.reply_text("Operação cancelada.", reply_markup=main_menu())
+    await update.effective_message.reply_text(
+        "<b>Cadastro cancelado</b>\n\nVocê pode iniciar novamente quando desejar.",
+        parse_mode="HTML",
+        reply_markup=main_menu(),
+    )
     return ConversationHandler.END
 
 
 async def my_id(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.effective_message.reply_text(
-        f"Seu Telegram ID é: `{update.effective_user.id}`", parse_mode="Markdown"
+        f"<b>Seu ID do Telegram</b>\n\n<code>{update.effective_user.id}</code>",
+        parse_mode="HTML",
     )
 
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data.clear()
     await update.effective_message.reply_text(
-        "🆘 *Precisa de ajuda?*\n\n"
-        "Você pode usar o passo a passo do menu ou falar diretamente com nossa equipe. "
-        "Informe em qual etapa parou e envie uma captura da tela, se possível.\n\n"
-        + support_text(markdown=True),
-        parse_mode="Markdown",
+        "<b>CENTRAL DE AJUDA</b>\n\n"
+        "Consulte o guia de cadastro no menu ou fale diretamente com nossa equipe. "
+        "Informe em qual etapa encontrou dificuldade e, se possível, envie uma captura da tela.\n\n"
+        + support_note(),
+        parse_mode="HTML",
         reply_markup=main_menu(),
     )
     return ConversationHandler.END
@@ -630,15 +659,16 @@ async def admin_action(update: Update, context: ContextTypes.DEFAULT_TYPE):
             url = page_url(row["slug"])
             await context.bot.send_message(
                 telegram_user_id,
-                "🎉 *Sua página foi aprovada!*\n\n"
-                f"`{url}`\n\n"
-                "Agora é só divulgar este endereço. Quando alguém assinar por ele, a Cakto "
-                "identificará sua indicação e registrará a comissão.\n\n"
-                + support_text(markdown=True),
-                parse_mode="Markdown",
+                "<b>CADASTRO APROVADO</b>\n\n"
+                "Sua página já está disponível para divulgação.\n\n"
+                f"<b>Seu endereço</b>\n<code>{html.escape(url)}</code>\n\n"
+                "As vendas realizadas por meio dessa página serão identificadas com seus dados "
+                "de afiliado e registradas na Cakto.\n\n"
+                + support_note(),
+                parse_mode="HTML",
                 reply_markup=InlineKeyboardMarkup(
                     [
-                        [InlineKeyboardButton("🌐 Abrir minha página", url=url)],
+                        [InlineKeyboardButton("Abrir minha página", url=url)],
                         [support_button()],
                     ]
                 ),
@@ -646,8 +676,10 @@ async def admin_action(update: Update, context: ContextTypes.DEFAULT_TYPE):
         else:
             await context.bot.send_message(
                 telegram_user_id,
-                "🚫 Seu cadastro não pôde ser aprovado neste momento. Fale com o suporte para "
-                "entender o motivo e corrigir o que for necessário.",
+                "<b>CADASTRO NÃO APROVADO</b>\n\n"
+                "Não foi possível aprovar seus dados neste momento. Fale com nossa equipe "
+                "para verificar o motivo e receber orientação.",
+                parse_mode="HTML",
                 reply_markup=InlineKeyboardMarkup([[support_button()]]),
             )
     except Exception:
@@ -659,7 +691,9 @@ async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> N
     if isinstance(update, Update) and update.effective_message:
         try:
             await update.effective_message.reply_text(
-                "Ocorreu um erro inesperado. Tente novamente com /start ou fale com o suporte.",
+                "<b>Não foi possível concluir esta ação</b>\n\n"
+                "Tente novamente usando /start. Se o problema continuar, fale com nossa equipe.",
+                parse_mode="HTML",
                 reply_markup=main_menu(),
             )
         except Exception:

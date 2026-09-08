@@ -8,7 +8,6 @@ from bot import (
     checkout_profile,
     main_menu,
     page_url,
-    support_text,
     support_url,
     welcome_text,
 )
@@ -37,21 +36,16 @@ class BotFormattingTests(unittest.IsolatedAsyncioTestCase):
         ):
             os.environ.pop(name, None)
 
-    def test_support_username_is_escaped_for_markdown(self):
-        self.assertEqual(
-            support_text(markdown=True),
-            r"🆘 Atendimento humano: @BaltigoFlix\_suporte",
-        )
-
     def test_support_username_becomes_a_direct_telegram_url(self):
         self.assertEqual(support_url(), "https://t.me/BaltigoFlix_suporte")
 
     def test_welcome_and_menu_explain_the_program(self):
-        self.assertIn("Ganhe dinheiro", welcome_text())
+        self.assertIn("Programa oficial de afiliados", welcome_text())
+        self.assertIn("receba comissão", welcome_text())
         labels = [button.text for row in main_menu().inline_keyboard for button in row]
-        self.assertIn("💸 Como ganho dinheiro?", labels)
-        self.assertIn("❓ O que é a Cakto?", labels)
-        self.assertIn("🆘 Falar com o suporte", labels)
+        self.assertIn("Como funciona", labels)
+        self.assertIn("Sobre a Cakto", labels)
+        self.assertIn("Falar com o suporte", labels)
 
     def test_page_url_uses_the_official_site(self):
         os.environ["OFFICIAL_SITE_URL"] = "https://baltigoflix.com.br/"
@@ -82,10 +76,10 @@ class BotFormattingTests(unittest.IsolatedAsyncioTestCase):
 
         text = message.reply_text.await_args.args[0]
         options = message.reply_text.await_args.kwargs
-        self.assertIn("somente um link", text)
-        self.assertIn("quatro planos", text)
-        self.assertIn(r"@BaltigoFlix\_suporte", text)
-        self.assertEqual(options["parse_mode"], "Markdown")
+        self.assertIn("apenas um link", text)
+        self.assertIn("demais planos", text)
+        self.assertIn("Nossa equipe", text)
+        self.assertEqual(options["parse_mode"], "HTML")
 
 
 if __name__ == "__main__":
