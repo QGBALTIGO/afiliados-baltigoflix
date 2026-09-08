@@ -5,6 +5,7 @@ import re
 import sqlite3
 
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
+from telegram.helpers import escape_markdown
 from telegram.ext import (
     Application,
     CallbackQueryHandler,
@@ -49,8 +50,11 @@ def page_url(slug: str) -> str:
     return env("PUBLIC_BASE_URL", "http://localhost:8000").rstrip("/") + "/" + slug
 
 
-def support_text() -> str:
-    return f"🆘 Atendimento humano: {env('SUPPORT_USERNAME', '@seu_suporte')}"
+def support_text(*, markdown: bool = False) -> str:
+    username = env("SUPPORT_USERNAME", "@seu_suporte")
+    if markdown:
+        username = escape_markdown(username, version=1)
+    return f"🆘 Atendimento humano: {username}"
 
 
 def main_menu() -> InlineKeyboardMarkup:
@@ -131,7 +135,7 @@ async def menu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "4️⃣ Abra a seção de links.\n"
             "5️⃣ Copie o link pessoal do plano solicitado.\n\n"
             "⚠️ Não envie link de convite, página genérica ou checkout de outro produto.\n\n"
-            + support_text(),
+            + support_text(markdown=True),
             parse_mode="Markdown",
             reply_markup=back_menu(),
         )
@@ -139,7 +143,7 @@ async def menu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.edit_message_text(
             "🆘 *Suporte humano*\n\n"
             "Este bot cuida apenas das ferramentas automáticas do parceiro.\n\n"
-            + support_text(),
+            + support_text(markdown=True),
             parse_mode="Markdown",
             reply_markup=back_menu(),
         )
@@ -255,7 +259,7 @@ async def ask_plan(update: Update, plan: str):
         f"🔗 *Plano {label}*\n\n"
         f"Cole agora seu link pessoal de checkout do plano *{label}*.\n\n"
         "Vou conferir domínio, oferta, plano e formato do identificador.\n\n"
-        + support_text(),
+        + support_text(markdown=True),
         parse_mode="Markdown",
     )
 
@@ -304,7 +308,7 @@ async def handle_plan(
             "❌ *Não consegui aceitar esse link.*\n\n"
             + result.message
             + "\n\nTente novamente ou envie /cancel.\n"
-            + support_text(),
+            + support_text(markdown=True),
             parse_mode="Markdown",
         )
         return {
