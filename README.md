@@ -81,6 +81,8 @@ Monte um volume persistente em `/data`; sem ele, os cadastros serão perdidos qu
 
 O Railway fornece `PORT` automaticamente.
 
+Sem `TELEGRAM_BOT_TOKEN`, o serviço permanece online somente com a página web e o health check. Depois que o token for configurado, um novo deploy inicia também o bot.
+
 ## Limitações atuais
 
 - A propriedade do identificador ainda precisa ser conferida pelo administrador no gateway.
